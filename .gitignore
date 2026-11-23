@@ -1,0 +1,3 @@
+*.blend1
+.claude/
+__pycache__/
