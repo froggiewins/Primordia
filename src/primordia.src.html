@@ -226,6 +226,10 @@ const PARTS={
   mandibles:{n:'Pincer Mandibles',ic:'🦗',c:25,cat:'Mouths',mouth:[0,1,2.5],a:{grapple:1},d:'Carnivore · Bite 2.5 · Grapple'},
   spitter:{n:'Spitter',ic:'💦',c:25,cat:'Mouths',mouth:[0,1,1.5],a:{spit:1},d:'Carnivore · Bite 1.5 · Spit'},
   sucker:{n:'Lamprey Sucker',ic:'⭕',c:25,cat:'Mouths',mouth:[0,1,2],p:{drain:.35},d:'Carnivore · Bite 2 · bites heal you'},
+  crocjaw:{n:'Snapping Jaws',ic:'🐊',c:30,cat:'Mouths',mouth:[0,1,3.5],p:{crit:.05},d:'Carnivore · Bite 3.5 · hinged jaws · +5% crits'},
+  sawjaw:{n:'Saw Jaw',ic:'🦈',c:28,cat:'Mouths',mouth:[0,1,3],p:{drain:.15},d:'Carnivore · Bite 3 · bites heal you a little'},
+  grinder:{n:'Grinding Jaw',ic:'🐄',c:20,cat:'Mouths',mouth:[1,0,2],p:{hungerMul:.85},d:'Herbivore · Bite 2 · hinged jaws · meals last longer'},
+  crusher:{n:'Bone Crusher',ic:'🦛',c:30,cat:'Mouths',mouth:[1,1,3],p:{hp:4},d:'Omnivore · Bite 3 · lower tusks · +4 HP'},
   maw:{n:'Omni Maw',ic:'👄',c:25,cat:'Mouths',mouth:[1,1,2],d:'Omnivore · Bite 2'},
   tusks:{n:'Tusked Maw',ic:'🐗',c:30,cat:'Mouths',mouth:[1,1,2.5],p:{intimidate:1},d:'Omnivore · Bite 2.5 · predators keep away'},
   eye:{n:'Eye',ic:'👁️',c:5,cat:'Eyes',vis:1,d:'Vision +1'},
@@ -245,6 +249,12 @@ const PARTS={
   springleg:{n:'Spring Leg',ic:'🦘',c:20,cat:'Limbs',leg:{foot:'springfoot',th:.75},a:{leap:.5},p:{speed:.3},d:'Leap'},
   wing:{n:'Wing',ic:'🦋',c:25,cat:'Limbs',a:{glide:.5},p:{speed:.4},d:'Glide'},
   flipper:{n:'Flipper',ic:'🐢',c:12,cat:'Limbs',p:{swim:1},d:'Swim fast through water'},
+  grasparm:{n:'Grasping Arm',ic:'🤲',c:15,cat:'Arms',arm:{hand:'hand_grasp',th:1},p:{forage:1},d:'Picks fruit: fruit fills ×2'},
+  rakearm:{n:'Raking Claw',ic:'🐻',c:20,cat:'Arms',arm:{hand:'hand_claw',th:1.2},a:{strike:.5},d:'Claw Strike'},
+  mantisarm:{n:'Mantis Scythe',ic:'🦗',c:25,cat:'Arms',arm:{hand:'hand_scythe',th:.8},a:{strike:.5},p:{crit:.06},d:'Claw Strike · +6% crits'},
+  crabarm:{n:'Crab Pincer',ic:'🦀',c:25,cat:'Arms',arm:{hand:'hand_pincer',th:1.1},a:{grapple:.5},p:{def:.03},d:'Grapple · +3% defense'},
+  digarm:{n:'Digging Arm',ic:'⛏️',c:15,cat:'Arms',arm:{hand:'hand_shovel',th:1.3},p:{senseFossils:1},d:'Senses fossils nearby'},
+  tentacle:{n:'Tentacle',ic:'🐙',c:20,cat:'Arms',arm:{tent:1,th:1.4},a:{grapple:.5},p:{swim:.5},d:'Grapple · swim faster'},
   horn:{n:'Horn',ic:'🦏',c:15,cat:'Weapons',a:{charge:.5},d:'Charge'},
   antlers:{n:'Antlers',ic:'🦌',c:22,cat:'Weapons',a:{charge:.5},p:{def:.04},d:'Charge · +4% defense'},
   spike:{n:'Spike',ic:'🔺',c:8,cat:'Weapons',p:{def:.05},d:'+5% defense'},
@@ -268,12 +278,23 @@ const PARTS={
   glowspots:{n:'Glow Spots',ic:'✨',c:18,cat:'Details',a:{flash:1},d:'Flash: enemies flee'},
   whiskers:{n:'Whiskers',ic:'🐱',c:12,cat:'Details',p:{dnaBonus:1},d:'+1 DNA from every meal'},
   carapace:{n:'Carapace',ic:'🐚',c:25,cat:'Details',p:{def:.1,hp:12,speed:-1},d:'+10% def · +12 HP · slower'},
-  mane:{n:'Fur Mane',ic:'🦁',c:12,cat:'Details',p:{hungerMul:.75},d:'Hunger drains slower'}
+  mane:{n:'Fur Mane',ic:'🦁',c:12,cat:'Details',p:{hungerMul:.75},d:'Hunger drains slower'},
+  gills:{n:'Gills',ic:'🐠',c:12,cat:'Details',p:{swim:.5,regen:.3},d:'Swim faster · slow regeneration'},
+  barnacles:{n:'Barnacles',ic:'🪨',c:14,cat:'Details',p:{def:.04,hp:4},d:'+4% defense · +4 HP'},
+  scales:{n:'Scale Patch',ic:'🐉',c:14,cat:'Details',p:{def:.04,stealth:.05},d:'+4% defense · a little stealthier'},
+  warts:{n:'Poison Warts',ic:'🐸',c:16,cat:'Details',p:{thorns:.6},d:'Attackers get poisoned skin damage'},
+  eyespots:{n:'Eyespots',ic:'🦋',c:14,cat:'Details',p:{intimidate:1},d:'Fake eyes: predators keep away'},
+  fungus:{n:'Symbiotic Fungus',ic:'🍄',c:16,cat:'Details',p:{regen:.5,hungerMul:.9},d:'Regenerate · hunger drains slower'},
+  crystals:{n:'Crystal Growth',ic:'💠',c:18,cat:'Details',p:{insight:.2},d:'+20% social success'},
+  ears:{n:'Big Ears',ic:'🐰',c:10,cat:'Details',vis:1,d:'Hearing: Vision +1'}
 };
 for(const k in PARTS)if(PARTS[k].cat==='Social'&&!PARTS[k].anim)PARTS[k].anim='frill';
-const isLeg=t=>!!PARTS[t].leg;
+const isLeg=t=>!!PARTS[t].leg,isArm=t=>!!PARTS[t].arm;
 const TN=g=>({body:g.color,pattern:g.color2});
+const jawBuild=name=>g=>{const o=new THREE.Group(),u=new THREE.Group(),l=new THREE.Group();u.add(model(name+'_up',TN(g)));l.add(model(name+'_lo',TN(g)));o.add(u,l);
+  Object.assign(o.userData,{anim:'jaw',ju:u,jl:l,ph:Math.random()*6});return o;};
 const BUILD={
+  crocjaw:jawBuild('crocjaw'),sawjaw:jawBuild('sawjaw'),grinder:jawBuild('grinder'),crusher:jawBuild('crusher'),
   wing:g=>{const o=new THREE.Group(),piv=new THREE.Group();piv.add(model('wing',TN(g)));o.add(piv);o.userData.anim='wing';o.userData.piv=piv;return o;},
   c_eye:g=>wrap(model('eye',TN(g)),1.15),c_spike:g=>wrap(model('spike',TN(g)),1.3),
   c_flagella:g=>{const o=new THREE.Group();let par=o;const joints=[];for(let k=0;k<8;k++){const j=new THREE.Group();if(k)j.position.y=.22;const s=model('limb',{body:shade(g.color,-.3)});const r=.05*(1-k*.08);s.scale.set(r,.24,r);j.add(s);par.add(j);par=j;joints.push(j);}
@@ -283,6 +304,8 @@ const BUILD={
   c_filter:g=>{const o=new THREE.Group(),hs=[];for(let k=0;k<5;k++){const h=new THREE.Group();h.add(model('frond'));h.rotation.z=(k-2)*.3;o.add(h);hs.push(h);}o.userData.anim='cilia';o.userData.hairs=hs;return o;}
 };
 function buildPart(t,g){if(BUILD[t])return BUILD[t](g);const d=PARTS[t];
+  if(d.arm){const o=new THREE.Group(),th=.11*d.arm.th;if(d.arm.tent){for(let k=0;k<6;k++){const m=model('tentseg',TN(g));const r=th*(1-k*.12);m.scale.set(r,.18,r);m.position.y=k*.18;o.add(m);}return o;}
+    const l=model('limb',TN(g));l.scale.set(th,.55,th);const h=model(d.arm.hand,TN(g));h.position.y=.58;o.add(l,h);return o;}
   if(d.leg){const o=new THREE.Group(),l=model('limb',TN(g));l.scale.set(.12*d.leg.th,1,.12*d.leg.th);const f=model(d.leg.foot,TN(g));f.position.y=1;o.add(l,f);return o;}
   const o=model(t,TN(g));if(d.anim)o.userData.anim=d.anim;return o;}
 function genCount(g){const c={};for(const p of g.parts)c[p.t]=(c[p.t]||0)+(p.m?2:1);return c;}
@@ -319,9 +342,9 @@ function footprint(t){if(FP[t])return FP[t];
 const _q=new THREE.Quaternion(),_q2=new THREE.Quaternion(),ZAX=new THREE.Vector3(0,0,1),XAX=new THREE.Vector3(1,0,0);
 function blendSites(gen){const sites=[];
   gen.parts.forEach((p,idx)=>{const d=PARTS[p.t],s=p.s||1;for(const sg of(p.m?[1,-1]:[1])){const{pos,n}=partPose(gen,p,sg);
-    let fp;if(d.leg){const r=.13*s*d.leg.th*1.15;fp={rx:r,rz:r,hgt:1,flat:false};}else{const f=footprint(p.t);fp={rx:f.rx*s,rz:f.rz*s,hgt:f.hgt*s,flat:f.flat};}
+    let fp;if(d.leg||d.arm){const r=.13*s*(d.leg||d.arm).th*1.15;fp={rx:r,rz:r,hgt:1,flat:false};}else{const f=footprint(p.t);fp={rx:f.rx*s,rz:f.rz*s,hgt:f.hgt*s,flat:f.flat};}
     _q.setFromUnitVectors(UP,n);if(p.rot)_q.multiply(_q2.setFromAxisAngle(UP,p.rot*sg));
-    sites.push({key:idx+':'+sg,p:pos,n,S:pos.clone(),N:n.clone(),ax:XAX.clone().applyQuaternion(_q),az:ZAX.clone().applyQuaternion(_q),...fp,leg:!!d.leg});}});
+    sites.push({key:idx+':'+sg,p:pos,n,S:pos.clone(),N:n.clone(),ax:XAX.clone().applyQuaternion(_q),az:ZAX.clone().applyQuaternion(_q),...fp,leg:!!(d.leg||d.arm)});}});
   return sites;}
 function axisPoint(q,cen){let bx=cen[0].x,by=cen[0].y,bd=1e9;
   for(let i=0;i<cen.length-1;i++){const a=cen[i],b=cen[i+1],ex=b.x-a.x,ey=b.y-a.y,L2=ex*ex+ey*ey||1e-9,t=clamp(((q.x-a.x)*ex+(q.y-a.y)*ey)/L2,0,1),x=a.x+ex*t,y=a.y+ey*t,d=(q.x-x)**2+(q.y-y)**2;if(d<bd){bd=d;bx=x;by=y;}}
@@ -396,9 +419,26 @@ function addLeg(info,gen,p,idx,pos,sg){
   [upper,lower,foot].forEach(o=>o.traverse(m=>{if(m.isMesh){m.userData={kind:'part',idx};info.partMeshes.push(m);}}));
   info.body.add(upper,lower,foot);
   info.legs.push({hip,rest,L1:L*.5,L2:L*.5,th,upper,lower,foot,side,ph:(sg<0?Math.PI:0)+p.v*1.7});}
+const DOWN=new THREE.Vector3(0,-1,0),FWD=new THREE.Vector3(1,0,0),ZA=new THREE.Vector3(0,0,1),_a1=new THREE.Vector3(),_a2=new THREE.Vector3(),_e=new THREE.Vector3(),_h=new THREE.Vector3(),_ap=new THREE.Vector3();
+function addArm(info,gen,p,idx,pos,sg){const d=PARTS[p.t].arm,s=p.s||1,n=partPose(gen,p,sg).n,lc=shade(gen.color,-.1);
+  const A={sh:pos.clone(),n,side:pos.z>=0?1:-1,th:.1*s*d.th,L1:.46*s,L2:.42*s,ph:(sg<0?Math.PI:0)+p.v*1.3,tent:!!d.tent,parts:[]};
+  if(A.tent){A.segs=[];for(let k=0;k<7;k++){const m=model('tentseg',{body:lc,pattern:gen.color2});A.segs.push(m);A.parts.push(m);}}
+  else{A.upper=model('limb',{body:lc});A.lower=model('limb',{body:lc});A.hand=model(d.hand,TN(gen));A.hand.scale.setScalar(s);A.parts.push(A.upper,A.lower,A.hand);}
+  A.parts.forEach(o=>{o.traverse(m=>{if(m.isMesh){m.userData={kind:'part',idx};info.partMeshes.push(m);}});info.body.add(o);});
+  info.arms.push(A);}
+function poseArms(info,t,phase,moving){if(!info.arms.length)return;const a=info.atkAt!=null?G.t-info.atkAt:9,reach=a<.4?Math.sin(Math.PI*a/.4):0,gy=-info.body.position.y+.35;
+  for(const A of info.arms){const sw=Math.sin(phase+A.ph)*.35*moving+Math.sin(t*1.3+A.ph)*.07+reach*1.3;
+    if(A.tent){_ap.copy(A.sh);_a1.copy(A.n).multiplyScalar(.6).addScaledVector(DOWN,.5).addScaledVector(FWD,.25).normalize();const L=.26*A.L1/.46;
+      for(let k=0;k<A.segs.length;k++){_a1.applyAxisAngle(ZA,(Math.sin(t*2.4-k*.75+A.ph)*.32+sw*.25)*.6).normalize();if(k>2)_a1.addScaledVector(DOWN,-.12*Math.sin(t*1.7+k)).normalize();
+        _e.copy(_ap).addScaledVector(_a1,L);if(_e.y<gy)_e.y=gy;placeCyl(A.segs[k],_ap,_e,A.th*(1-k*.11));_ap.copy(_e);}continue;}
+    _a1.copy(A.n).multiplyScalar(.6).addScaledVector(DOWN,.6).addScaledVector(FWD,.35).normalize().applyAxisAngle(ZA,sw);
+    _e.copy(A.sh).addScaledVector(_a1,A.L1);
+    _a2.copy(FWD).multiplyScalar(.85).addScaledVector(DOWN,.12);_a2.z-=A.side*.1;_a2.normalize().applyAxisAngle(ZA,sw*1.1+reach*.5);
+    _h.copy(_e).addScaledVector(_a2,A.L2);if(_h.y<gy){_h.y=gy;_a2.subVectors(_h,_e).normalize();}
+    placeCyl(A.upper,A.sh,_e,A.th);placeCyl(A.lower,_e,_h,A.th*.85);A.hand.position.copy(_h);A.hand.quaternion.setFromUnitVectors(UP,_a2);}}
 function buildCreature(gen,cell){
   const root=new THREE.Group(),body=new THREE.Group();root.add(body);
-  const info={root,body,bodyMeshes:[],partMeshes:[],legs:[],anims:[],geos:[],cell};
+  const info={root,body,bodyMeshes:[],partMeshes:[],legs:[],arms:[],anims:[],geos:[],cell};
   const S=gen.spine;
   if(cell){const g=cellBodyGeo(gen.seed||1);info.geos.push(g);const m=new THREE.Mesh(g,cellMat(gen.color));m.userData={kind:'body'};body.add(m);info.bodyMeshes.push(m);
     const nu=model('nucleus',{pattern:gen.color2});nu.scale.setScalar(.36);nu.position.set(-.25,0,0);body.add(nu);
@@ -408,6 +448,7 @@ function buildCreature(gen,cell){
   gen.parts.forEach((p,idx)=>{for(const sg of(p.m?[1,-1]:[1])){const pp=partPose(gen,p,sg),n=pp.n,st=SITES&&SITES.get(idx+':'+sg);
     const pos=st?st.S.clone().addScaledVector(st.N,st.lift||0).addScaledVector(n,-(st.sink||0)):pp.pos;
     if(isLeg(p.t)){addLeg(info,gen,p,idx,st?st.S.clone().addScaledVector(st.N,-.13*(p.s||1)*PARTS[p.t].leg.th*.4):pos,sg);continue;}
+    if(isArm(p.t)){addArm(info,gen,p,idx,st?st.S.clone().addScaledVector(st.N,-.13*(p.s||1)*PARTS[p.t].arm.th*.4):pos,sg);continue;}
     const o=buildPart(p.t,gen);o.position.copy(pos);o.quaternion.setFromUnitVectors(UP,n);if(p.rot)o.rotateY(p.rot*sg);const s=p.s||1;o.scale.setScalar(s);o.userData.bs=s;
     o.traverse(m=>{if(m.isMesh){m.userData={kind:'part',idx};info.partMeshes.push(m);}});
     if(o.userData.anim)info.anims.push(o);body.add(o);}});
@@ -420,12 +461,16 @@ function buildCreature(gen,cell){
   return info;}
 function disposeInfo(info){if(info)info.geos.forEach(g=>g.dispose());}
 function animateCreature(info,t,phase,moving,charm){
+  poseArms(info,t,phase,moving);
   for(const L of info.legs){const a=phase+L.ph,st=Math.min(.9,(L.L1+L.L2)*.45)*moving;_f.copy(L.rest);_f.x+=Math.sin(a)*st;_f.y+=Math.max(0,Math.cos(a))*st*.7;legIK(L,_f);}
   for(const o of info.anims){const u=o.userData;switch(u.anim){
     case'flag':u.joints.forEach((j,k)=>j.rotation.z=Math.sin(t*12-k*.9)*(.25+.2*moving));break;
     case'cilia':u.hairs.forEach((h,k)=>h.rotation.x=Math.sin(t*14+k*.8)*.4);break;
     case'chomp':{const op=.3-Math.abs(Math.sin(t*6))*.3;o.children[0].rotation.z=-op;o.children[1].rotation.set(0,Math.PI,-op);break;}
     case'wing':u.piv.rotation.x=Math.sin(t*9)*.5;break;
+    case'jaw':{const a=info.atkAt!=null?G.t-info.atkAt:9;let op=.07+.05*Math.sin(t*1.6+u.ph)+charm*.25;
+      if(a<.12)op=.07+a/.12*.6;else if(a<.24)op=.67*(1-(a-.12)/.12);else if(a<.5)op*=(a-.24)/.26;
+      u.ju.rotation.z=op*.55;u.jl.rotation.z=-op;break;}
     case'frill':o.scale.setScalar(u.bs*(1+charm*.5+Math.sin(t*3)*.04));break;
     case'pulse':o.scale.setScalar(u.bs*(1+charm*.8+Math.sin(t*4)*.06));break;}}}
 const ORIG=new WeakMap(),GHOSTMAT={};
@@ -589,18 +634,20 @@ const PLACE={eye:[0,[.55,.5,.6],1],beady:[0,[.55,.5,.6],1],slit:[0,[.55,.5,.6],1
   horn:[0,[.25,.8,.5],1],antlers:[0,[-.1,.9,.4],1],spike:['back',[0,1,0],0],armor:['mid',[0,.9,.45],1],quills:['back',[0,1,0],0],tailclub:['tail',[-1,.3,0],0],stinger:['tail',[-.6,.8,0],0],shockorgan:['mid',[0,1,0],0],
   frill:[0,[-.5,.45,.75],1],sac:[1,[.3,-.9,0],0],dewlap:[0,[.2,-.95,0],0],sail:['mid',[0,1,0],0],crest:[0,[-.3,.95,0],0],plume:['tail',[-.7,.7,0],0],lantern:[0,[.3,.95,0],0],petals:[1,[0,.5,.85],1],
   antenna:[0,[.2,.9,.35],1],fin:['tail',[-.3,.9,0],0],camo:['mid',[0,.55,.85],1],regen:['mid',[0,.2,1],1],glowspots:['mid',[0,.5,.85],1],whiskers:[0,[.8,-.1,.55],1],carapace:['mid',[0,1,0],0],mane:[1,[-.2,.95,0],0],
-  wing:[1,[0,.6,.8],1],flipper:['mid',[0,-.5,.85],1]};
+  wing:[1,[0,.6,.8],1],flipper:['mid',[0,-.5,.85],1],
+  gills:[1,[.1,.05,1],1],barnacles:['mid',[0,.75,.65],1],scales:['mid',[0,.6,.8],1],warts:['mid',[0,.85,.5],1],eyespots:['mid',[0,.35,.93],1],fungus:['mid',[0,1,0],0],crystals:['mid',[0,1,0],0],ears:[0,[-.25,.85,.45],1]};
 function randGen(kind){
   const n=randi(3,7),base=rand(1.1,2.3),S=[];
   for(let i=0;i<n;i++){const f=i/(n-1);S.push({x:(n-1)*.45-i*.9,y:base+(i===0?rand(.1,.6):0)-Math.max(0,f-.6)*rand(0,1.5),r:i===0?rand(.42,.6):rand(.42,.85)*(1-f*.55)});}
   S.forEach(v=>{v.r=Math.max(.22,v.r);v.y=Math.max(v.y,v.r*.7);});
   const parts=[],P=(t,v,o,m)=>{const l=hyp(...o),on=o.map(x=>x/l);parts.push({t,v,o:on,n:on.slice(),m,s:1});};
   const put=t=>{const[v,o,m]=PLACE[t];if(v==='back'){for(let i=1;i<n;i+=t==='quills'?2:1)P(t,i,o,false);return;}P(t,v==='mid'?Math.floor(n/2):v==='tail'?n-1:Math.min(v,n-1),o,!!m);};
-  P(pick(kind==='herb'?['beak','snout','baleen']:kind==='carn'?['jaw','mandibles','spitter','sucker']:['maw','tusks']),0,[1,-.15,0],false);
+  P(pick(kind==='herb'?['beak','snout','baleen','grinder','grinder']:kind==='carn'?['jaw','mandibles','spitter','sucker','crocjaw','sawjaw']:['maw','tusks','crusher','crusher']),0,[1,-.15,0],false);
   put(pick(['eye','eye','beady','slit','goggle','stalkeye','compound','triple','crystaleye']));
   const lp=randi(1,Math.min(3,n-1)),lt=pick(kind==='carn'?['clawleg','talonleg','leg','padleg']:kind==='herb'?['leg','hoofleg','stompleg','padleg','springleg']:Object.keys(PARTS).filter(isLeg));
   for(let k=0;k<lp;k++){const v=lp===1?Math.floor(n/2):Math.round(1+k*(n-2)/(lp-1));P(lt,v,[0,-.55,.85],true);}
-  const W=['horn','antlers','spike','armor','quills','tailclub','stinger','shockorgan'],So=['frill','sac','dewlap','sail','crest','plume','lantern','petals'],D=['antenna','fin','camo','regen','glowspots','whiskers','carapace','mane'];
+  const W=['horn','antlers','spike','armor','quills','tailclub','stinger','shockorgan'],So=['frill','sac','dewlap','sail','crest','plume','lantern','petals'],D=['antenna','fin','camo','regen','glowspots','whiskers','carapace','mane','gills','barnacles','scales','warts','eyespots','fungus','crystals','ears'];
+  if(Math.random()<.35&&n>2)P(pick(kind==='carn'?['rakearm','mantisarm','crabarm','tentacle']:kind==='herb'?['grasparm','digarm','tentacle']:Object.keys(PARTS).filter(isArm)),1,[.35,-.3,.88],true);
   const extra=(pool,a,b)=>{pool.slice().sort(()=>Math.random()-.5).slice(0,randi(a,b)).forEach(put);};
   extra(W,kind==='herb'?0:1,2);extra(So,1,2);extra(D,0,2);if(Math.random()<.12)put('wing');
   const h=rand(0,360);return{spine:S,parts,color:hslHex(h,rand(40,70),rand(40,60)),color2:hslHex(h+rand(60,200),rand(50,80),rand(55,75))};}
@@ -661,7 +708,7 @@ function startCreature(sv){
   G.home={x:0,z:0};G.hunger=sv?sv.hunger:100;G.camYaw=Math.PI*.5;G.camPitch=.45;G.camDist=12;G.moveTo=null;
   G.player=makeCre(G.gen,4,0);G.player.a=0;G.player.buffs={sprint:0,camo:0};G.player.inv=0;setPlayerCre(G.player);G.player.hp=G.player.maxhp;
   G.creatures=[];G.pack=[];G.meat=[];
-  makeNest(0,0,G.gen.color);
+  makeNest(0,0,G.gen.color);spawnKin();
   G.species=[];const N=6,off=rand(0,TAU);
   if(sv){const p=G.player;p.x=sv.player.x;p.z=sv.player.z;p.hp=Math.min(p.maxhp,sv.player.hp);
     for(const s of sv.species){const sp=addSpecies(s.nest.x,s.nest.z,s.home,s);
@@ -674,6 +721,25 @@ function startCreature(sv){
   setTimeout(()=>toast('Each species wants a social act (shown above them). Match it to befriend them!','#ff8fb8'),3500);
   setTimeout(()=>toast('Purple light beams mark fossils that unlock new parts.','#ffd84a'),7000);
   setTimeout(()=>toast('The land goes on forever. Wild species far from home are tougher!','#5fe0b5'),10500);}
+const KIN_N=4;
+function spawnKin(){G.kin=[];for(let i=0;i<KIN_N;i++){const a=i/KIN_N*TAU+rand(-.3,.3),d=rand(5,10),c=makeCre(G.gen,Math.cos(a)*d,Math.sin(a)*d);
+  c.kin=true;c.wt={x:c.x,z:c.z};c.idle=rand(0,3);c.hp=c.maxhp;G.kin.push(c);}}
+function rebuildKin(){for(const c of G.kin||[]){scLand.remove(c.info.root);disposeInfo(c.info);c.info=buildCreature(G.gen,false);scLand.add(c.info.root);
+  const st=creStats(G.gen);Object.assign(c,{stats:st,pv:st.pv,ab:st.ab,def:st.defense,maxhp:st.maxhp,hp:st.maxhp,rad:c.info.rad,legLen:c.info.legLen,charm:1.5});}}
+function updKin(dt){const p=G.player,dpn=hyp(p.x,p.z);
+  for(const c of G.kin){const dp=hyp(p.x-c.x,p.z-c.z)||1;if(dp>260){continue;}let tx=0,tz=0,spd=c.stats.speed*.4;
+    // defend the nest: go for anything hostile near home, or whatever you are fighting close by
+    let tg=null,bd=26;for(const e of G.creatures){if(e.dead||e.pack||e.sp.status==='allied')continue;
+      const hostile=e.sp.angry>0||e.sp.disposition==='aggressive'||e===G.lastTarget;if(!hostile)continue;const dn=hyp(e.x,e.z),de=hyp(e.x-c.x,e.z-c.z);if(dn<30&&de<bd){bd=de;tg=e;}}
+    if(tg){const ex=tg.x-c.x,ez=tg.z-c.z,d=hyp(ex,ez)||1;tx=ex/d;tz=ez/d;spd=c.stats.speed;
+      if(d<c.rad+tg.rad+1&&c.cd<=0){c.cd=1.2;c.info.atkAt=G.t;hitCreature(tg,c.stats.attack*.5+1);if(tg.sp.status==='neutral')tg.sp.angry=Math.max(tg.sp.angry,12);}}
+    else{const ex=c.wt.x-c.x,ez=c.wt.z-c.z,d=hyp(ex,ez);
+      if(d<1.2||Math.random()<dt*.08){const greet=dpn<20&&Math.random()<.35;c.wt=greet?{x:p.x+rand(-5,5),z:p.z+rand(-5,5)}:{x:rand(-16,16),z:rand(-16,16)};c.idle=rand(.5,4);}
+      if((c.idle-=dt)<=0&&d>1.2){tx=ex/d;tz=ez/d;}
+      else if(dp<9){c.a+=angDiff(c.a,Math.atan2(p.z-c.z,p.x-c.x))*Math.min(1,dt*3);if(Math.random()<dt*.15)c.charm=1.2;}}
+    moveCre(c,tx,tz,spd,dt);
+    const rr=c.rad+p.rad;if(dp<rr&&!p.jump){const o=(rr-dp)/2;c.x-=(p.x-c.x)/dp*o;c.z-=(p.z-c.z)/dp*o;}
+    c.info.root.visible=dp<200;if(dp<200)placeCre(c,dp<110);}}
 function growFruit(t){const a=rand(0,TAU),d=rand(2.5,4.5),x=t.x+Math.cos(a)*d,z=t.z+Math.sin(a)*d;const m=model('fruit',{fruit:hslHex(rand(0,45),85,55)});m.scale.setScalar(.6);m.position.set(x,terrainH(x,z),z);m.rotation.y=rand(0,TAU);scLand.add(m);G.fruit.push({x,z,tree:t,mesh:m});}
 function moveCre(c,tx,tz,spd,dt){if(terrainH(c.x,c.z)<WATER)spd*=c.pv&&c.pv.swim?1.3:.55;
   c.vx+=(tx*spd-c.vx)*Math.min(1,dt*4);c.vz+=(tz*spd-c.vz)*Math.min(1,dt*4);
@@ -697,6 +763,7 @@ function useAbility(k){
   let L,ok=true;
   if(G.stage==='cell'){L=cellStats(p).ab[k];if(!L)return;ok=cellAbility(k,L);}
   else if(G.stage==='creature'){L=p.ab[k];if(!L)return;const py=terrainH(p.x,p.z);
+    if(['bite','strike','grapple','sting','pounce','charge'].includes(k))p.info.atkAt=G.t;
     switch(k){
       case'bite':{const t=nearestTarget(p.rad+3,enemyF);lungeAt(t);if(t){dealDamage(t,L*rand(.85,1.2),{drain:1});sfx(180,.1,'square',.05);}break;}
       case'strike':{const t=nearestTarget(p.rad+3,enemyF);lungeAt(t);if(t){dealDamage(t,(1+L*1.6)*rand(.85,1.2));sfx(260,.08,'square',.04);}break;}
@@ -781,19 +848,19 @@ function updateCreature(dt){
     if(c.stun>0){c.stun-=dt;if(Math.random()<dt*3)floatText(c.x,terrainH(c.x,c.z)+3,c.z,'💫','#fff');moveCre(c,0,0,0,dt);continue;}
     if(c.fear>0){c.fear-=dt;tx=-dx/dp;tz=-dz/dp;spd=c.stats.speed;}
     else if(c.pack){const tg=G.lastTarget;
-      if(tg&&hyp(tg.x-c.x,tg.z-c.z)<45){const ex=tg.x-c.x,ez=tg.z-c.z,d=hyp(ex,ez)||1;tx=ex/d;tz=ez/d;spd=c.stats.speed;if(d<c.rad+tg.rad+1&&c.cd<=0){c.cd=1.1;hitCreature(tg,c.stats.attack*.6);tg.sp.angry=20;}}
+      if(tg&&hyp(tg.x-c.x,tg.z-c.z)<45){const ex=tg.x-c.x,ez=tg.z-c.z,d=hyp(ex,ez)||1;tx=ex/d;tz=ez/d;spd=c.stats.speed;if(d<c.rad+tg.rad+1&&c.cd<=0){c.cd=1.1;c.info.atkAt=G.t;hitCreature(tg,c.stats.attack*.6);tg.sp.angry=20;}}
       else{const idx=G.pack.indexOf(c),oa=p.a+Math.PI+(idx-1)*.7,od=p.rad*2+3,ox=p.x+Math.cos(oa)*od,oz=p.z+Math.sin(oa)*od,ex=ox-c.x,ez=oz-c.z,d=hyp(ex,ez);
         if(d>1.5){tx=ex/d;tz=ez/d;spd=Math.min(Math.max(st.speed,c.stats.speed)*1.15,d*2);}}}
     else{const rm=(1-pv.stealth)*(pv.intimidate&&sp.disposition==='aggressive'?.65:1);
       const hostile=!camo&&sp.status==='neutral'&&(sp.angry>0||sp.disposition==='aggressive'||(sp.disposition==='territorial'&&hyp(p.x-sp.nest.x,p.z-sp.nest.z)<22*rm));
       if(hostile&&dp<(sp.angry>0?40:24)*rm){tx=dx/dp;tz=dz/dp;spd=c.stats.speed*.9;
-        if(dp<c.rad+p.rad+1&&c.cd<=0&&!p.jump){c.cd=1.3;hurtPlayer(c.atk,c);c.vx+=tx*7;c.vz+=tz*7;}}
+        if(dp<c.rad+p.rad+1&&c.cd<=0&&!p.jump){c.cd=1.3;c.info.atkAt=G.t;hurtPlayer(c.atk,c);c.vx+=tx*7;c.vz+=tz*7;}}
       else if(sp.disposition==='peaceful'&&sp.angry>0&&dp<25){tx=-dx/dp;tz=-dz/dp;spd=c.stats.speed;}
       else{const ex=c.wt.x-c.x,ez=c.wt.z-c.z,d=hyp(ex,ez);if(d<1.5||Math.random()<dt*.1){c.wt={x:sp.nest.x+rand(-22,22),z:sp.nest.z+rand(-22,22)};c.idle=rand(0,3);}
         if((c.idle-=dt)<=0&&d>1.5){tx=ex/d;tz=ez/d;}}}
     moveCre(c,tx,tz,spd,dt);
     const rr=c.rad+p.rad;if(dp<rr&&!p.jump){const o=(rr-dp)/2;c.x-=dx/dp*o;c.z-=dz/dp*o;p.x+=dx/dp*o;p.z+=dz/dp*o;}}
-  G.creatures=G.creatures.filter(c=>!c.dead);G.pack=G.pack.filter(c=>!c.dead);
+  G.creatures=G.creatures.filter(c=>!c.dead);G.pack=G.pack.filter(c=>!c.dead);updKin(dt);
   placeCre(p,true);for(const c of G.creatures){const near=hyp(c.x-p.x,c.z-p.z);c.info.root.visible=near<200;if(near<260)placeCre(c,near<110);}
   if((G.cullT=(G.cullT||0)-dt)<=0){G.cullT=.4;for(const m of G.props)m.visible=Math.abs(m.position.x-p.x)<200&&Math.abs(m.position.z-p.z)<200;for(const f of G.fruit)f.mesh.visible=hyp(f.x-p.x,f.z-p.z)<120;updLandWorld();}
   const py=terrainH(p.x,p.z),d=G.camDist*(1+p.info.len*.08);
@@ -881,10 +948,10 @@ function updateGhost(e){const di=$('dragIcon');di.style.left=e.clientX+'px';di.s
 const ROT_STEP=Math.PI/12;
 function partUnderPointer(){setRay(G.ptr.x,G.ptr.y);const h=ray.intersectObjects(ED.info.partMeshes,false)[0];return h?h.object.userData.idx:-1;}
 function rotatePart(dir){const step=dir*ROT_STEP,d=ED.drag;
-  if(d&&(d.kind==='new'||d.kind==='move')){if(isLeg(d.t)){edMsg('Legs always point down — they cannot be rotated.');return;}d.rot=(d.rot||0)+step;sfx(560,.03,'triangle');
+  if(d&&(d.kind==='new'||d.kind==='move')){if(isLeg(d.t)||isArm(d.t)){edMsg('Legs and arms pose themselves, so they cannot be spun.');return;}d.rot=(d.rot||0)+step;sfx(560,.03,'triangle');
     if(ED.ghostRec){const e={clientX:G.ptr.x,clientY:G.ptr.y};updateGhost(e);}return;}
   let i=partUnderPointer();if(i<0&&performance.now()-(ED.lastRot||0)<1500&&ED.lastRotIdx<ED.gen.parts.length)i=ED.lastRotIdx;ED.lastRotIdx=i;if(i<0){edMsg('Point at a part (or drag one) and press Q / R, or Shift+scroll on it, to rotate it.');return;}
-  const p=ED.gen.parts[i];if(isLeg(p.t)){edMsg('Legs always point down — they cannot be rotated.');return;}
+  const p=ED.gen.parts[i];if(isLeg(p.t)||isArm(p.t)){edMsg('Legs and arms pose themselves, so they cannot be spun.');return;}
   if(performance.now()-(ED.lastRot||0)>700)pushUndo();ED.lastRot=performance.now();
   p.rot=(((p.rot||0)+step)%TAU+TAU)%TAU;if(Math.abs(p.rot)<1e-6||Math.abs(p.rot-TAU)<1e-6)p.rot=0;
   sfx(560,.03,'triangle');edMsg(PARTS[p.t].n+' rotated to '+Math.round(p.rot*180/Math.PI)+'°');edRebuild();}
@@ -925,11 +992,11 @@ addEventListener('pointerup',e=>{const wasDown=G.ptr.down;G.ptr.down=false;
     if(d.kind==='new'){if(rec){const inst=rec.m?2:1;
         if(complexity(ED.gen)+inst>CAP[ED.mode])edMsg('Too complex! Remove something first.');
         else if(G.dna<cost*inst)edMsg('Not enough DNA ('+cost*inst+' needed)');
-        else{pushUndo();G.dna-=cost*inst;ED.gen.parts.push(rec);sfx(700,.07,'triangle');edMsg('');}}}
+        else{pushUndo();G.dna-=cost*inst;ED.gen.parts.push(rec);sfx(700,.07,'triangle');edMsg('');ED.chomp=PARTS[rec.t].mouth||isArm(rec.t);}}}
     else{const old=d.part.m?2:1;
       if(rec){const diff=cost*((rec.m?2:1)-old);if(diff>G.dna||complexity(ED.gen)+(rec.m?2:1)>CAP[ED.mode]){G.dna+=cost*old;edMsg('Not enough DNA/complexity there — part refunded');}else{G.dna-=diff;ED.gen.parts.push(rec);sfx(650,.06,'triangle');edMsg('');}}
       else{G.dna+=cost*old;edMsg('Part removed (+'+cost*old+' DNA)');sfx(300,.08,'triangle');}}
-    clearGhosts();$('dragIcon').classList.add('hidden');edRebuild();}
+    clearGhosts();$('dragIcon').classList.add('hidden');edRebuild();if(ED.chomp){ED.info.atkAt=G.t;ED.chomp=false;}}
   ED.drag=null;});
 R.domElement.addEventListener('wheel',e=>{e.preventDefault();const up=e.deltaY<0;
   if(G.stage==='creature'){G.camDist=clamp(G.camDist*(up?1/1.1:1.1),5,40);return;}
@@ -950,7 +1017,7 @@ function edDone(){const c=genCount(ED.gen);
   $('ed').classList.add('hidden');clearGhosts();scEd.remove(ED.info.root);disposeInfo(ED.info);ED.info=null;G.stage=ED.prev;
   Object.keys(PARTS).forEach(k=>{if((PARTS[k].cat==='Cell')===(ED.mode==='cell'))G.newParts.delete(k);});
   if(ED.mode==='cell'){const p=G.player;scCell.remove(p.info.root);disposeInfo(p.info);p.info=buildCreature(p.gen,true);scCell.add(p.info.root);p.hp=Math.min(p.hp+1,cellStats(p).maxhp);buildHotbar();}
-  else if(G.stage==='creature'){const p=G.player;scLand.remove(p.info.root);disposeInfo(p.info);p.info=buildCreature(p.gen,false);scLand.add(p.info.root);setPlayerCre(p);p.hp=p.maxhp;buildHotbar();}
+  else if(G.stage==='creature'){const p=G.player;scLand.remove(p.info.root);disposeInfo(p.info);p.info=buildCreature(p.gen,false);scLand.add(p.info.root);setPlayerCre(p);p.hp=p.maxhp;buildHotbar();rebuildKin();}
   const f=ED.onDone;ED.onDone=null;if(f)f();saveGame();}
 function updEditor(dt){const c=ED.cam,i=ED.info;c.tx+=((ED.mode==='cell'?0:i.cx)-c.tx)*.1;c.ty+=((ED.mode==='cell'?0:i.cy*.6+.3)-c.ty)*.1;
   camera.position.set(c.tx+Math.cos(c.pitch)*Math.sin(c.yaw)*c.dist,c.ty+Math.sin(c.pitch)*c.dist,Math.cos(c.pitch)*Math.cos(c.yaw)*c.dist);camera.lookAt(c.tx,c.ty,0);
@@ -1010,7 +1077,7 @@ function drawHUD(){hx.setTransform(DPR,0,0,DPR,0,0);hx.clearRect(0,0,W,H);const 
     const HS=G.species.filter(s=>s.home),res=HS.filter(s=>s.status!=='neutral').length,wild=G.species.filter(s=>!s.home&&s.status!=='neutral').length;bar(22,86,230,16,res/HS.length,'#a87ce0',`Brain: homeland ${res}/${HS.length}`+(wild?` · wild ${wild}`:''));
     const status=[p.buffs.sprint>0?'💨':'',p.buffs.camo>0?'🍃':'',p.jump?'🦘':'',terrainH(p.x,p.z)<WATER?(pv.swim?'🌊':'🌊slow'):''].join(' ');
     hx.fillStyle='#8fb0a8';hx.font='12px system-ui';hx.textAlign='left';hx.fillText(`ATK ${p.stats.attack.toFixed(1)}  DEF ${Math.round(pv.def*100)}%  SPD ${p.stats.speed}  Pack ${G.pack.length} ${status}`,22,121);
-    const labels=[{x:0,z:0,t:'Your nest (E to evolve)',c:'#fff'},...G.species.map(s=>({x:s.nest.x,z:s.nest.z,t:s.name+(s.status==='allied'?' ♥ allied':s.status==='extinct'?' ✝ extinct':''),c:s.status==='allied'?'#5fe0b5':s.status==='extinct'?'#aaa':'#fff'}))];
+    const labels=[{x:0,z:0,t:'Your nest (E to evolve) · your kin live here',c:'#fff'},...G.species.map(s=>({x:s.nest.x,z:s.nest.z,t:s.name+(s.status==='allied'?' ♥ allied':s.status==='extinct'?' ✝ extinct':''),c:s.status==='allied'?'#5fe0b5':s.status==='extinct'?'#aaa':'#fff'}))];
     for(const l of labels){if(hyp(l.x-p.x,l.z-p.z)>90)continue;const s=proj(l.x,terrainH(l.x,l.z)+5,l.z);if(!s.ok)continue;hx.font='bold 15px system-ui';hx.textAlign='center';hx.lineWidth=4;hx.strokeStyle='rgba(0,0,0,.6)';hx.strokeText(l.t,s.x,s.y);hx.fillStyle=l.c;hx.fillText(l.t,s.x,s.y);}
     let near=null,nd=20+pv.revealCre*0+(p.stats.vision||1)*6;for(const c of G.creatures){if(c.pack)continue;const d=hyp(c.x-p.x,c.z-p.z);if(d<nd){nd=d;near=c;}}
     if(near){const s=near.sp,x=W/2-140;hx.fillStyle='rgba(8,24,32,.82)';hx.fillRect(x,12,280,66);hx.textAlign='center';hx.fillStyle=s.gen.color2;hx.font='bold 15px system-ui';hx.fillText(s.name,W/2,30);
@@ -1023,7 +1090,7 @@ function drawHUD(){hx.setTransform(DPR,0,0,DPR,0,0);hx.clearRect(0,0,W,H);const 
     hx.fillStyle='#b48cff';for(const r of G.relics){if((pv.revealFossils||(pv.senseFossils&&hyp(r.x-p.x,r.z-p.z)<70))&&inM(r.x,r.z))hx.fillRect(ex(r.x)-2,ez(r.z)-2,4,4);}
     const vr=(p.stats.vision||1)*15;for(const c of G.creatures){if(inM(c.x,c.z)&&(pv.revealCre||hyp(c.x-p.x,c.z-p.z)<vr)){hx.fillStyle=c.pack?'#8fd0ff':c.sp.gen.color;hx.fillRect(ex(c.x)-1,ez(c.z)-1,2.5,2.5);}}
     for(const s of G.species){if(!inM(s.nest.x,s.nest.z))continue;hx.fillStyle=s.status==='allied'?'#5fe0b5':s.status==='extinct'?'#666':s.disposition==='aggressive'?'#ff6b6b':'#f3d27a';hx.beginPath();hx.arc(ex(s.nest.x),ez(s.nest.z),4,0,TAU);hx.fill();}
-    hx.fillStyle='#fff';hx.fillRect(ex(0)-3,ez(0)-3,6,6);
+    hx.fillStyle='#fff';hx.fillRect(ex(0)-3,ez(0)-3,6,6);hx.fillStyle='#d8fff0';for(const c of G.kin)if(inM(c.x,c.z))hx.fillRect(ex(c.x)-1.5,ez(c.z)-1.5,3,3);
     hx.fillStyle='#8fd0ff';hx.beginPath();hx.arc(ex(p.x),ez(p.z),3,0,TAU);hx.fill();
     hx.strokeStyle='#8fd0ff';hx.beginPath();hx.moveTo(ex(p.x),ez(p.z));hx.lineTo(ex(p.x+Math.cos(p.a)*15),ez(p.z+Math.sin(p.a)*15));hx.stroke();
     const dh=hyp(p.x,p.z);hx.fillStyle='#8fb0a8';hx.font='11px system-ui';hx.textAlign='right';hx.fillText(dh>20?`nest ${Math.round(dh)}m`:'at nest',mx+ms-4,my+ms+13);}

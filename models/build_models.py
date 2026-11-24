@@ -794,8 +794,221 @@ NEW_PARTS = [m_c_proboscis, m_c_jet, m_c_electric, m_c_toxin, m_c_shell, m_c_ten
              m_crest, m_plume, m_lantern, m_dewlap, m_sail, m_petals,
              m_camo, m_regen, m_glowspots, m_whiskers, m_carapace, m_mane]
 
+# ================================================================ jawed mouths, arms, more details
+FUNGUS = lambda: mat('FUNGUS', '#e0803a', .5)
+KERATIN = lambda: mat('KERATIN', '#3a3430', .35)
+
+def jaw_half(name, L, W, D, side, nteeth, tooth, kind='cone', tusk=0., nostrils=False, tongue=False, beak=False, seed=0):
+    """One half of a hinged jaw. Hinge at the origin, jaw reaching out along +Z.
+    side=-1 builds the upper jaw (on -X), side=+1 the lower jaw; their flat biting
+    faces meet near X=0 so the game can swing them open around the hinge."""
+    e = root(name); N = 18; path = []; radii = []
+    for i in range(N):
+        t = i / (N - 1)
+        path.append(V((side * D * .72 * (1 - .3 * t), 0, L * t)))
+        tipf = math.sqrt(max(0., 1 - ((t - .78) / .22) ** 2)) if t > .78 else 1.
+        radii.append((W * (1 - .3 * t * t) * tipf + .006, D * (1 - .45 * t) * tipf + .006))
+    def prof(t, a):
+        inner = max(0., -math.sin(a) * -side)          # loft frame y is -X
+        return 1 - .55 * inner ** 1.5 + .03 * math.sin(a * 5 + t * 9) * (1 - inner)
+    bm = loft(path, radii, 22, prof); sculpt(bm, .008, 6, seed, 2)
+    mk(name + '_bone', bm, BODY(), e)
+    face = lambda t: side * D * (.72 * (1 - .3 * t) - .45 * (1 - .45 * t))   # x of the flat biting face
+    mk(name + '_gum', sphere(1, (face(.45) + side * .004, 0, L * .45), (D * .05, W * .7, L * .43)), MOUTH(), e)
+    if tongue:
+        tg = spline([(face(.1), 0, L * .08), (face(.4) - side * .02, 0, L * .4), (face(.7) - side * .03, 0, L * .62)], 10); n = len(tg)
+        mk(name + '_tongue', loft(tg, [(W * .42 * (1 - i / n * .5), D * .12) for i in range(n)], 12), TONGUE(), e)
+    for k in range(nteeth):
+        t = (k + .7) / (nteeth + .4) * .84; z = L * t; ww = W * (1 - .3 * t * t) * .8
+        for sy in (-1, 1):
+            base = V((face(t), sy * ww, z))
+            if kind == 'flat':
+                mk(f'{name}_mol{k}{sy}', sphere(1, base + V((-side * tooth * .25, 0, 0)), (tooth * .45, tooth * .55, tooth * .6), 10, 8), IVORY(), e)
+                continue
+            ln = tooth * (1.25 if kind == 'saw' else 1) * (1 - .25 * t)
+            tip = base + V((-side * ln, -sy * ww * .06, L * .02))
+            mk(f'{name}_t{k}{sy}', taper([base - V((-side * .01, 0, 0)), base.lerp(tip, .5), tip], tooth * (.55 if kind == 'saw' else .38), .003, 1,
+                                          3 if kind == 'saw' else 8), IVORY(), e, smooth=kind != 'saw')
+    for sy in (-.4, .4):                                  # front incisors
+        base = V((face(.93), sy * W * .5, L * .9))
+        if kind == 'flat' and beak: continue
+        mk(f'{name}_inc{sy}', taper([base, base + V((-side * tooth * .9, 0, L * .03))], tooth * .33, .003, 1, 8), IVORY(), e)
+    if tusk:
+        for sy in (-1, 1):
+            base = V((face(.62), sy * W * .72, L * .62))
+            mk(f'{name}_tusk{sy}', taper(spline([base, base + V((-side * tusk * .55, sy * .02, -.01)), base + V((-side * tusk, sy * .05, -.05))], 10), tusk * .2, .006, 1.1, 10), IVORY(), e)
+    if nostrils:
+        for sy in (-1, 1):
+            c = V((side * D * 1.0, sy * W * .32, L * .9))
+            mk(f'{name}_nb{sy}', sphere(1, c, (.03, .045, .05), 12, 8), BODY(), e)
+            mk(f'{name}_nh{sy}', sphere(1, c + V((side * .022, 0, 0)), (.012, .02, .025), 8, 6), PUPIL(), e)
+    if beak:
+        tip = spline([(face(.75), 0, L * .75), (side * D * .5, 0, L * 1.02), (side * D * .1, 0, L * 1.08)], 10); n = len(tip)
+        mk(name + '_beak', loft(tip, [(W * .55 * (1 - i / n) + .01, D * .5 * (1 - i / n) + .01) for i in range(n)], 14), KERATIN(), e)
+    # scaly ridges along the outside of the jaw
+    for k in range(5):
+        t = .15 + k * .15; c = V((side * D * (.72 * (1 - .3 * t) + .42 * (1 - .45 * t)), 0, L * t))
+        mk(f'{name}_sc{k}', sphere(1, c, (.012, W * .45 * (1 - .3 * t), .03)), BODY_DARK(), e)
+
+def m_crocjaw():
+    jaw_half('crocjaw_up', .9, .19, .13, -1, 8, .07, nostrils=True, seed=1)
+    jaw_half('crocjaw_lo', .86, .17, .11, 1, 8, .065, tongue=True, seed=2)
+
+def m_sawjaw():
+    jaw_half('sawjaw_up', .5, .3, .13, -1, 6, .1, 'saw', seed=3)
+    jaw_half('sawjaw_lo', .46, .28, .12, 1, 6, .095, 'saw', tongue=True, seed=4)
+
+def m_crusher():
+    jaw_half('crusher_up', .4, .32, .17, -1, 3, .07, seed=5)
+    jaw_half('crusher_lo', .42, .34, .22, 1, 3, .06, tusk=.3, tongue=True, seed=6)
+
+def m_grinder():
+    jaw_half('grinder_up', .42, .27, .15, -1, 4, .09, 'flat', beak=True, seed=7)
+    jaw_half('grinder_lo', .4, .25, .14, 1, 4, .09, 'flat', tongue=True, beak=True, seed=8)
+
+# ---- hands for the arm rig: +Z runs along the forearm, fingers curl toward +X
+def digit(name, base, ctrl, r0, r1, m, e, claw=0., cm=None):
+    path = spline([base] + ctrl, 10)
+    mk(name, taper(path, r0, r1, .8, 10), m, e)
+    if claw:
+        d = (path[-1] - path[-3]).normalized(); tip = path[-1] + d * claw
+        hook = tip + V((claw * .5, 0, -claw * .15))
+        mk(name + '_claw', taper(spline([path[-1] - d * .01, tip, hook], 8), r1 * 1.15, .003, 1, 8), cm or IVORY(), e)
+
+def m_hand_grasp():
+    e = root('hand_grasp')
+    mk('palm', blob(1, 3, (.12, .15, .13), (0, 0, .1), .01, 5, 2, 2), BODY(), e)
+    for k, y in enumerate((-.09, 0, .09)):
+        digit(f'gf{k}', V((.01, y, .2)), [V((.04, y * 1.1, .33)), V((.12, y * 1.15, .42)), V((.22, y * 1.15, .42))], .042, .026, BODY(), e, .04)
+    digit('gthumb', V((.05, .12, .08)), [V((.12, .2, .14)), V((.2, .2, .2))], .042, .028, BODY(), e, .035)
+
+def m_hand_claw():
+    e = root('hand_claw')
+    mk('paw', blob(1, 3, (.15, .19, .14), (0, 0, .1), .015, 5, 3, 2), BODY_DARK(), e)
+    mk('tuft', blob(.13, 2, (1, 1.2, .6), (-.05, 0, .02), .05, 7, 4, 2), FUR(), e)
+    for k, y in enumerate((-.11, 0, .11)):
+        digit(f'cf{k}', V((.03, y, .2)), [V((.07, y * 1.1, .26))], .05, .04, BODY_DARK(), e)
+        p0 = V((.08, y * 1.1, .27))
+        mk(f'rake{k}', taper(spline([p0, p0 + V((.04, 0, .15)), p0 + V((.17, 0, .27)), p0 + V((.31, 0, .24))], 14), .045, .003, 1.1, 10), IVORY(), e)
+
+def m_hand_scythe():
+    e = root('hand_scythe')
+    mk('knuckle', blob(1, 3, (.1, .09, .12), (0, 0, .06), .01, 6, 5, 2), CHITIN(), e)
+    path = spline([(0, 0, .1), (.02, 0, .4), (.12, 0, .66), (.3, 0, .72), (.42, 0, .62)], 26); N = len(path)
+    mk('blade', loft(path, [(.018, .07 * math.sin(math.pi * min(1, (i + 2) / N)) ** .6 + .006) for i in range(N)], 10,
+                      prof=lambda t, a: 1 + .25 * max(0, -math.sin(a)) * (math.sin(t * 70) > 0)), CHITIN(), e)
+    for k in range(6):
+        b = path[4 + k * 3]; mk(f'spine{k}', taper([b + V((.045, 0, 0)), b + V((.1, 0, .03))], .015, .002, 1, 6), IVORY(), e)
+
+def m_hand_pincer():
+    e = root('hand_pincer')
+    mk('propodus', blob(1, 3, (.16, .11, .24), (0, 0, .22), .02, 5, 6, 2), PATTERN(), e)
+    for k in range(4):
+        mk(f'knob{k}', sphere(.025, (-.12 + .02 * k, .07 * (-1) ** k, .14 + .07 * k), (1, 1, .8), 10, 8), BODY_DARK(), e)
+    digit('fixed', V((-.06, 0, .4)), [V((-.07, 0, .55)), V((-.03, 0, .72)), V((.04, 0, .8))], .07, .015, PATTERN(), e)
+    digit('dactyl', V((.08, 0, .38)), [V((.17, 0, .5)), V((.17, 0, .66)), V((.1, 0, .76))], .065, .015, PATTERN(), e)
+    for k in range(4):
+        mk(f'pt{k}', sphere(.018, (-.04 + .005 * k, 0, .5 + .06 * k), (1.4, 1, 1), 8, 6), IVORY(), e)
+        mk(f'dt{k}', sphere(.018, (.12 - .01 * k, 0, .5 + .06 * k), (1.4, 1, 1), 8, 6), IVORY(), e)
+
+def m_hand_shovel():
+    e = root('hand_shovel')
+    mk('palm', blob(1, 3, (.09, .24, .17), (0, 0, .14), .012, 5, 7, 2), BODY_DARK(), e)
+    mk('palmpad', sphere(1, (.07, 0, .16), (.03, .17, .12)), PAD(), e)
+    for k in range(5):
+        y = (k - 2) * .09; b = V((.0, y, .28))
+        mk(f'dig{k}', loft(spline([b, b + V((.03, y * .1, .12)), b + V((.08, y * .15, .2))], 10), [(.034 * (1 - i / 11) + .012, .016) for i in range(10)], 8), IVORY(), e)
+
+def m_tentseg():
+    e = root('tentseg')
+    mk('seg', lathe([(.01, -.05), (.95, 0), (1., .5), (.9, 1.), (.01, 1.05)], 14, 14), BODY(), e)
+    for k, z in enumerate((.28, .72)):
+        mk(f'suck{k}', sphere(1, (.85, 0, z), (.18, .42, .2), 12, 8), PAD(), e)
+        mk(f'suckh{k}', sphere(1, (.98, 0, z), (.06, .18, .09), 8, 6), MOUTH(), e)
+
+# ---- more details
+def m_gills():
+    e = root('gills')
+    for k in range(4):
+        y = (k - 1.5) * .11
+        ridge = spline([(-.22, y, 0), (0, y + .01, .05), (.22, y, 0)], 14)
+        mk(f'gr{k}', loft(ridge, [(.03, .025)] * 14, 10), BODY(), e)
+        mk(f'gs{k}', sphere(1, (0, y + .045, .02), (.2, .016, .022)), MOUTH(), e)
+        for j in range(5):
+            x = -.14 + j * .07; b = V((x, y + .045, .02))
+            mk(f'gf{k}{j}', taper(spline([b, b + V((0, .02, .04)), b + V((0, .05, .05))], 6), .012, .003, 1, 6), TONGUE(), e)
+
+def m_barnacles():
+    e = root('barnacles'); rnd = random.Random(21)
+    for k in range(7):
+        a = k * 2.3; r = .07 + .04 * k; c = V((math.cos(a) * r * .9, math.sin(a) * r * .9, 0)); sc = .7 + rnd.random() * .6
+        bm = lathe([(.085 * sc, 0), (.08 * sc, .03 * sc), (.05 * sc, .1 * sc), (.035 * sc, .115 * sc)], 10, 8,
+                   prof=lambda t, a: 1 + .12 * math.cos(a * 6))
+        mk(f'cone{k}', xform(bm, c), SHELL(), e, smooth=False)
+        mk(f'hole{k}', sphere(.03 * sc, c + V((0, 0, .11 * sc)), (1, 1, .4), 10, 6), MOUTH(), e)
+
+def m_scales():
+    e = root('scales')
+    for i in range(5):
+        for j in range(4):
+            x = -.24 + i * .12; y = -.18 + j * .12 + (i % 2) * .06
+            if abs(y) > .23: continue
+            bm = sphere(1, (0, 0, 0), (.075, .065, .016), 14, 8); xform(bm, (x, y, .02 + .01 * math.cos(x * 6)), rotm('Y', .38))
+            mk(f'sc{i}{j}', bm, PATTERN() if (i + j) % 3 else BODY_DARK(), e)
+
+def m_warts():
+    e = root('warts')
+    for k in range(8):
+        a = k * 2.4; r = .05 + .035 * k; c = V((math.cos(a) * r, math.sin(a) * r, 0)); s = .05 + .015 * (k % 3)
+        mk(f'w{k}', blob(s, 2, (1, 1, .8), c, s * .2, 9, k, 2), BODY_DARK(), e)
+        mk(f'wt{k}', sphere(s * .38, c + V((0, 0, s * .75)), (1, 1, .6), 10, 6), SPITM(), e)
+
+def m_eyespots():
+    e = root('eyespots')
+    for k, (x, s) in enumerate(((-.12, 1.), (.17, .7))):
+        mk(f'o{k}', sphere(1, (x, 0, 0), (.2 * s, .16 * s, .02)), PATTERN(), e)
+        mk(f'r{k}', sphere(1, (x, 0, .012), (.15 * s, .12 * s, .02)), PUPIL(), e)
+        mk(f'i{k}', sphere(1, (x, 0, .022), (.1 * s, .085 * s, .02)), EYESPOT(), e)
+        mk(f'h{k}', sphere(1, (x - .04 * s, .03 * s, .035), (.028 * s, .028 * s, .012)), EYE_W(), e)
+
+def m_fungus():
+    e = root('fungus')
+    for k, (x, y, h, r) in enumerate([(0, 0, .22, .13), (.14, .06, .14, .08), (-.12, .09, .12, .07), (.06, -.13, .1, .06), (-.08, -.1, .16, .09)]):
+        mk(f'st{k}', xform(lathe([(r * .45, 0), (r * .3, h * .5), (r * .28, h)], 10, 8), (x, y, 0)), FAT(), e)
+        mk(f'cap{k}', xform(lathe([(r * .3, h * .9), (r, h * .95), (r * .9, h * 1.15), (r * .4, h * 1.32), (.002, h * 1.36)], 16, 10), (x, y, 0)),
+           FUNGUS() if k % 2 == 0 else GLOW(), e)
+        if k % 2 == 0:
+            for j in range(4):
+                a = j * 1.6 + k; mk(f'dot{k}{j}', sphere(r * .13, (x + math.cos(a) * r * .55, y + math.sin(a) * r * .55, h * 1.22), (1, 1, .5), 8, 6), IVORY(), e)
+
+def m_crystals():
+    e = root('crystals'); rnd = random.Random(5)
+    mk('base', blob(.15, 2, (1.3, 1.1, .45), (0, 0, 0), .03, 6, 9, 2), STONE(), e)
+    for k in range(6):
+        h = .2 + rnd.random() * .3; r = .045 + rnd.random() * .03
+        bm = lathe([(.002, 0), (r, .03), (r, h * .8), (.002, h)], 6, 4)
+        a = k / 6 * math.tau; tilt = .25 + rnd.random() * .3
+        xform(bm, (math.cos(a) * .08, math.sin(a) * .07, .02), rotm(V((-math.sin(a), math.cos(a), 0)), tilt))
+        mk(f'cr{k}', bm, CRYSTAL(), e, smooth=False)
+
+def m_ears():
+    e = root('ears')
+    def fn(u, v):
+        w = .17 * math.sin(math.pi * min(1, v * 1.15 + .08)) ** .7
+        x = (u - .5) * 2 * w; return (-.12 * v * v + .05 * ((u - .5) * 2) ** 2, x, v * .55)
+    mk('ear', surface(fn, 10, 12), BODY(), e)
+    def fi(u, v):
+        x, y, z = fn(.15 + u * .7, .1 + v * .75); return (x + .012, y, z)
+    mk('inner', surface(fi, 8, 10), PATTERN(), e)
+    mk('tip', blob(.04, 2, (1, 1, 1.6), (-.12, 0, .56), .015, 9, 2, 2), FUR(), e)
+    mk('earbase', sphere(1, (0, 0, .02), (.08, .12, .05)), BODY(), e)
+
+NEW2_PARTS = [m_crocjaw, m_sawjaw, m_crusher, m_grinder,
+              m_hand_grasp, m_hand_claw, m_hand_scythe, m_hand_pincer, m_hand_shovel, m_tentseg,
+              m_gills, m_barnacles, m_scales, m_warts, m_eyespots, m_fungus, m_crystals, m_ears]
+
 # ---------------------------------------------------------------- build
-for f in NEW_PARTS + [m_eye, m_stalkeye, m_beak, m_jaw, m_maw, m_horn, m_spike, m_frill, m_sac, m_antenna, m_fin, m_wing,
+for f in NEW_PARTS + NEW2_PARTS + [m_eye, m_stalkeye, m_beak, m_jaw, m_maw, m_horn, m_spike, m_frill, m_sac, m_antenna, m_fin, m_wing,
           m_limb, m_foot, m_clawfoot, m_mandible, m_frond, m_nucleus, m_organelle,
           m_tree_a, m_tree_b, m_tree_c, lambda: rock('rock_a', 1, (1.3, 1, .8)), lambda: rock('rock_b', 5, (1, 1.2, 1.1)),
           m_bush, m_nest, m_egg, m_fruit, m_meat, m_plant, m_meatbit, m_relic_sea, m_relic_land]:
@@ -827,6 +1040,9 @@ SHEETS = {
                                  'baleen', 'eye', 'stalkeye', 'compound', 'beady', 'slit', 'goggle', 'triple', 'crystaleye'],
     'preview_limbs_weapons': ['limb', 'foot', 'clawfoot', 'hoof', 'stompfoot', 'padfoot', 'talonfoot', 'springfoot',
                               'wing', 'flipper', 'horn', 'spike', 'tailclub', 'stinger', 'antlers', 'armor', 'quills', 'shockorgan'],
+    'preview_jaws_arms': ['crocjaw_up', 'crocjaw_lo', 'sawjaw_up', 'sawjaw_lo', 'crusher_up', 'crusher_lo', 'grinder_up', 'grinder_lo',
+                          'hand_grasp', 'hand_claw', 'hand_scythe', 'hand_pincer', 'hand_shovel', 'tentseg',
+                          'gills', 'barnacles', 'scales', 'warts', 'eyespots', 'fungus', 'crystals', 'ears'],
     'preview_social_details': ['frill', 'sac', 'crest', 'plume', 'lantern', 'dewlap', 'sail', 'petals',
                                'antenna', 'fin', 'camo', 'regen', 'glowspots', 'whiskers', 'carapace', 'mane'],
 }
