@@ -19,6 +19,9 @@ button{font:inherit;background:#1f4a44;color:var(--ink);border:1px solid #3f8a7c
 button:hover{background:#2a6359}
 button:disabled{opacity:.5;cursor:default}
 button.big{font-size:20px;padding:12px 30px;background:#2b8a6e}
+button.big small{display:block;font-size:12px;font-weight:400;opacity:.8;margin-top:3px}
+#bCont{background:#3a7fb0;display:block;margin:0 auto 10px}
+.savenote{margin-top:10px;font-size:12px;color:var(--dim)}
 kbd{background:#1b3a38;border:1px solid #3f8a7c;border-radius:4px;padding:0 5px;font-size:13px}
 .keys{font-size:14px;color:var(--dim);text-align:left;display:inline-block;margin:6px 0 16px}
 #btns{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:5;flex-wrap:wrap;justify-content:center}
@@ -90,7 +93,9 @@ kbd{background:#1b3a38;border:1px solid #3f8a7c;border-radius:4px;padding:0 5px;
       <div><kbd>Z</kbd> sing · <kbd>X</kbd> dance · <kbd>C</kbd> charm · <kbd>V</kbd> pose · <kbd>G</kbd> do what they want · <kbd>M</kbd> mute</div>
       <div>🔓 Unlock parts by growing, finding glowing crystals &amp; fossils, and meeting other species.</div>
     </div><br>
+    <button class="big hidden" id="bCont" disabled></button>
     <button class="big" id="bStart" disabled>Loading models…</button>
+    <div class="savenote">💾 Progress saves automatically in this browser.</div>
   </div>
 </div>
 
@@ -311,11 +316,11 @@ function footprint(t){if(FP[t])return FP[t];
   const cut=Math.min(.1,maxY*.2);let rx=0,rz=0;
   for(let i=0;i<pts.length;i+=3)if(pts[i+1]<cut){rx=Math.max(rx,Math.abs(pts[i]));rz=Math.max(rz,Math.abs(pts[i+2]));}
   return FP[t]={rx:clamp(rx,.02,.45),rz:clamp(rz,.02,.45),hgt:maxY,flat:maxY<.12};}
-const _q=new THREE.Quaternion(),ZAX=new THREE.Vector3(0,0,1),XAX=new THREE.Vector3(1,0,0);
+const _q=new THREE.Quaternion(),_q2=new THREE.Quaternion(),ZAX=new THREE.Vector3(0,0,1),XAX=new THREE.Vector3(1,0,0);
 function blendSites(gen){const sites=[];
   gen.parts.forEach((p,idx)=>{const d=PARTS[p.t],s=p.s||1;for(const sg of(p.m?[1,-1]:[1])){const{pos,n}=partPose(gen,p,sg);
     let fp;if(d.leg){const r=.13*s*d.leg.th*1.15;fp={rx:r,rz:r,hgt:1,flat:false};}else{const f=footprint(p.t);fp={rx:f.rx*s,rz:f.rz*s,hgt:f.hgt*s,flat:f.flat};}
-    _q.setFromUnitVectors(UP,n);
+    _q.setFromUnitVectors(UP,n);if(p.rot)_q.multiply(_q2.setFromAxisAngle(UP,p.rot*sg));
     sites.push({key:idx+':'+sg,p:pos,n,S:pos.clone(),N:n.clone(),ax:XAX.clone().applyQuaternion(_q),az:ZAX.clone().applyQuaternion(_q),...fp,leg:!!d.leg});}});
   return sites;}
 function axisPoint(q,cen){let bx=cen[0].x,by=cen[0].y,bd=1e9;
@@ -403,7 +408,7 @@ function buildCreature(gen,cell){
   gen.parts.forEach((p,idx)=>{for(const sg of(p.m?[1,-1]:[1])){const pp=partPose(gen,p,sg),n=pp.n,st=SITES&&SITES.get(idx+':'+sg);
     const pos=st?st.S.clone().addScaledVector(st.N,st.lift||0).addScaledVector(n,-(st.sink||0)):pp.pos;
     if(isLeg(p.t)){addLeg(info,gen,p,idx,st?st.S.clone().addScaledVector(st.N,-.13*(p.s||1)*PARTS[p.t].leg.th*.4):pos,sg);continue;}
-    const o=buildPart(p.t,gen);o.position.copy(pos);o.quaternion.setFromUnitVectors(UP,n);const s=p.s||1;o.scale.setScalar(s);o.userData.bs=s;
+    const o=buildPart(p.t,gen);o.position.copy(pos);o.quaternion.setFromUnitVectors(UP,n);if(p.rot)o.rotateY(p.rot*sg);const s=p.s||1;o.scale.setScalar(s);o.userData.bs=s;
     o.traverse(m=>{if(m.isMesh){m.userData={kind:'part',idx};info.partMeshes.push(m);}});
     if(o.userData.anim)info.anims.push(o);body.add(o);}});
   let minX=1e9,maxX=-1e9,minB=1e9,sy=0;S.forEach(v=>{minX=Math.min(minX,v.x-v.r);maxX=Math.max(maxX,v.x+v.r);minB=Math.min(minB,v.y-v.r);sy+=v.y;});
@@ -494,14 +499,15 @@ function updCellWorld(force){const p=G.player,ccx=Math.floor(p.x/CCH),ccz=Math.f
   if(!force&&key===G.chKey)return;G.chKey=key;const want=new Set();
   for(let i=-2;i<=2;i++)for(let j=-2;j<=2;j++){const k=(ccx+i)+','+(ccz+j);want.add(k);if(!G.chunks.has(k))G.chunks.set(k,loadCellChunk(ccx+i,ccz+j));}
   for(const[k,ch]of G.chunks)if(!want.has(k)){for(const m of ch.objs)scCell.remove(m);for(const r of G.relics)if(r.k===k)scCell.remove(r.mesh);G.relics=G.relics.filter(r=>r.k!==k);G.chunks.delete(k);}}
-function startCell(){
-  G.seed=randi(1,1e9);G.chunks=new Map();G.relicTaken=new Set();G.relicFound=0;G.chKey=null;
-  buildCellScene();G.stage='cell';G.dna=0;G.landReady=false;G.clouds=[];G.cds={};
-  const gen={spine:[{x:0,y:0,r:1}],parts:[cpart('c_filter',[1,0,0],false),cpart('c_eye',[.6,.55,.55],true)],color:'#7fd6c2',color2:'#2f6e8f',seed:3};
-  G.player={x:1500,y:1500,vx:0,vy:0,a:0,r:14,hp:5,gen,inv:0,grow:0,jet:0};G.player.info=buildCreature(gen,true);scCell.add(G.player.info.root);
-  G.food=[];for(let i=0;i<FOODN;i++)spawnFood('plant',...ringPt(1500,1500,0,1500));for(let i=0;i<12;i++)spawnFood('meat',...ringPt(1500,1500,0,1500));
+function startCell(sv){
+  G.seed=sv?sv.seed:randi(1,1e9);G.chunks=new Map();G.relicTaken=new Set(sv?sv.relicTaken:[]);G.relicFound=sv?sv.relicFound:0;G.chKey=null;
+  buildCellScene();G.stage='cell';G.dna=sv?sv.dna:0;G.landReady=sv?!!sv.landReady:false;G.clouds=[];G.cds={};
+  const gen=sv?sv.player.gen:{spine:[{x:0,y:0,r:1}],parts:[cpart('c_filter',[1,0,0],false),cpart('c_eye',[.6,.55,.55],true)],color:'#7fd6c2',color2:'#2f6e8f',seed:3};
+  G.player={x:1500,y:1500,vx:0,vy:0,a:0,r:14,hp:5,gen,inv:0,grow:0,jet:0};if(sv)Object.assign(G.player,sv.player,{gen});G.player.info=buildCreature(gen,true);scCell.add(G.player.info.root);
+  const P0=G.player;G.food=[];for(let i=0;i<FOODN;i++)spawnFood('plant',...ringPt(P0.x,P0.y,0,1500));for(let i=0;i<12;i++)spawnFood('meat',...ringPt(P0.x,P0.y,0,1500));
   G.cells=[];for(let i=0;i<CELLN;i++)spawnCell(true);
-  G.relics=[];G.cc={x:75,z:75,h:25};updCellWorld(true);buildHotbar();
+  G.relics=[];G.cc={x:P0.x*S3,z:P0.y*S3,h:25};updCellWorld(true);buildHotbar();
+  if(sv){toast('Welcome back! Your progress was loaded.','#5fe0b5');return;}
   toast('Eat green plant matter to grow. Earn DNA to evolve! (E opens the editor)');
   setTimeout(()=>toast('Glowing crystals unlock new parts. The sea goes on forever, so explore!','#ffd84a'),4000);}
 function spawnFood(type,x,y){if(x==null)[x,y]=ringPt(G.player.x,G.player.y,1000,1700);const f={x,y,type,r:type==='plant'?rand(4,6.5):rand(4.5,6.5),spin:rand(-1.5,1.5)};
@@ -641,23 +647,29 @@ function updLandWorld(force){const p=G.player;regionSpecies(force);G.water.posit
 function makeNest(x,z,col){const g=new THREE.Group();g.add(model('nest'));const eggs=new THREE.Group();
   for(let k=0;k<3;k++){const e=model('egg',{egg:col});e.scale.setScalar(.75);e.position.set((k-1)*1.1,.3,(k%2)*.7-.35);e.rotation.z=(k-1)*.2;eggs.add(e);}
   g.add(eggs);g.userData.eggs=eggs;g.position.set(x,terrainH(x,z)-.1,z);scLand.add(g);return g;}
-function addSpecies(nx,nz,home){const d=hyp(nx,nz),kind=pick(['herb','herb','carn','omni']),gen=randGen(kind),mult=Math.min(3.5,.7+Math.min(d,190)/190*.8+Math.max(0,d-190)/1200);
+function addSpecies(nx,nz,home,sv){const d=hyp(nx,nz),kind=sv?sv.kind:pick(['herb','herb','carn','omni']),gen=sv?sv.gen:randGen(kind),mult=sv?sv.mult:Math.min(3.5,.7+Math.min(d,190)/190*.8+Math.max(0,d-190)/1200);
   const sp={name:spName(),kind,gen,home,nest:{x:nx,z:nz},disposition:kind==='carn'?'aggressive':(Math.random()<.5?'territorial':'peaceful'),relation:0,angry:0,status:'neutral',mult,members:[],want:pick(SOC),wantT:rand(10,14)};
-  sp.mesh=makeNest(nx,nz,gen.color);G.species.push(sp);
-  for(let j=0;j<randi(3,5);j++){const c=makeCre(gen,nx+rand(-10,10),nz+rand(-10,10));c.sp=sp;c.maxhp=c.hp=Math.round(c.stats.maxhp*mult);c.atk=c.stats.attack*mult*.6;c.wt={x:c.x,z:c.z};c.idle=0;sp.members.push(c);G.creatures.push(c);}
+  if(sv)['name','disposition','relation','status','want'].forEach(k=>{if(sv[k]!=null)sp[k]=sv[k];});
+  sp.mesh=makeNest(nx,nz,gen.color);if(sp.status==='extinct')sp.mesh.userData.eggs.visible=false;G.species.push(sp);
+  for(let j=0,nm=sv?(sv.alive||0)+(sv.pack||0):randi(3,5);j<nm;j++){const c=makeCre(gen,nx+rand(-10,10),nz+rand(-10,10));c.sp=sp;c.maxhp=c.hp=Math.round(c.stats.maxhp*mult);c.atk=c.stats.attack*mult*.6;c.wt={x:c.x,z:c.z};c.idle=0;sp.members.push(c);G.creatures.push(c);}
   return sp;}
 function setPlayerCre(p){p.stats=creStats(p.gen);p.pv=p.stats.pv;p.ab=p.stats.ab;p.maxhp=p.stats.maxhp;p.rad=p.info.rad;p.legLen=p.info.legLen;}
-function startCreature(){
+function startCreature(sv){
+  if(sv){G.seed=sv.seed;G.relicTaken=new Set(sv.relicTaken);G.relicFound=sv.relicFound;G.dna=sv.dna;G.gen=sv.gen;}
   G.seed=G.seed||randi(1,1e9);G.relicTaken=G.relicTaken||new Set();G.relicFound=G.relicFound||0;
-  G.stage='creature';G.dna+=30;G.won=false;buildLand();G.cds={};G.shots=[];
-  G.home={x:0,z:0};G.hunger=100;G.camYaw=Math.PI*.5;G.camPitch=.45;G.camDist=12;G.moveTo=null;
+  G.stage='creature';if(!sv)G.dna+=30;G.won=sv?!!sv.won:false;buildLand();if(sv)G.regions=new Set(sv.regions);G.cds={};G.shots=[];
+  G.home={x:0,z:0};G.hunger=sv?sv.hunger:100;G.camYaw=Math.PI*.5;G.camPitch=.45;G.camDist=12;G.moveTo=null;
   G.player=makeCre(G.gen,4,0);G.player.a=0;G.player.buffs={sprint:0,camo:0};G.player.inv=0;setPlayerCre(G.player);G.player.hp=G.player.maxhp;
   G.creatures=[];G.pack=[];G.meat=[];
   makeNest(0,0,G.gen.color);
   G.species=[];const N=6,off=rand(0,TAU);
-  for(let i=0;i<N;i++){const a=off+i/N*TAU+rand(-.3,.3),d=rand(70,190);addSpecies(Math.cos(a)*d,Math.sin(a)*d,true);}
+  if(sv){const p=G.player;p.x=sv.player.x;p.z=sv.player.z;p.hp=Math.min(p.maxhp,sv.player.hp);
+    for(const s of sv.species){const sp=addSpecies(s.nest.x,s.nest.z,s.home,s);
+      sp.members.slice(0,Math.min(s.pack||0,3-G.pack.length)).forEach(m=>{m.pack=true;G.pack.push(m);m.x=p.x+rand(-4,4);m.z=p.z+rand(-4,4);});}}
+  else for(let i=0;i<N;i++){const a=off+i/N*TAU+rand(-.3,.3),d=rand(70,190);addSpecies(Math.cos(a)*d,Math.sin(a)*d,true);}
   updLandWorld(true);
   buildHotbar();
+  if(sv){toast('Welcome back! Your progress was loaded.','#5fe0b5');return;}
   toast('You crawl onto land! Your parts give you abilities — see the hotbar.','#5fe0b5');
   setTimeout(()=>toast('Each species wants a social act (shown above them). Match it to befriend them!','#ff8fb8'),3500);
   setTimeout(()=>toast('Purple light beams mark fossils that unlock new parts.','#ffd84a'),7000);
@@ -821,8 +833,8 @@ function openEditor(mode,gen,onDone){
   $('edTabs').innerHTML=cats.length>1?cats.map(c=>`<button data-c="${c}">${c}</button>`).join(''):'';
   $('col1').value=gen.color;$('col2').value=gen.color2;$('edTitle').textContent=mode==='cell'?'Cell Editor':'Creature Editor';
   $('edWalk').style.display=mode==='cell'?'none':'';$('edWalk').textContent='▶ Test walk';
-  $('edHint').innerHTML=mode==='cell'?'Drag parts onto your cell · drag a part off to remove it · scroll on a part to resize it · drag empty space to rotate'
-    :'Drag parts onto the body (they mirror automatically) · drag the body to bend the spine · drag the yellow ◆ handles to grow/shrink the spine · scroll on the body to fatten/slim · scroll on a part to resize · drag a part off to delete · Ctrl+Z undo';
+  $('edHint').innerHTML=mode==='cell'?'Drag parts onto your cell · drag a part off to remove it · scroll on a part to resize it · Q / R or Shift+scroll on a part to spin it · drag empty space to rotate the view'
+    :'Drag parts onto the body (they mirror automatically) · drag the body to bend the spine · drag the yellow ◆ handles to grow/shrink the spine · scroll on the body to fatten/slim · scroll on a part to resize · Q / R or Shift+scroll on a part to spin it · drag a part off to delete · Ctrl+Z undo';
   edMsg('');renderPalette();edRebuild();$('ed').classList.remove('hidden');}
 function renderPalette(){
   const hint=ED.mode==='cell'?'Grow or find crystals':'Find fossils or meet species';
@@ -834,7 +846,7 @@ function renderPalette(){
 $('edTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b){ED.tab=b.dataset.c;renderPalette();}});
 $('edPal').addEventListener('pointerdown',e=>{const c=e.target.closest('.pcard');if(!c)return;e.preventDefault();
   if(c.classList.contains('locked')){edMsg(ED.mode==='cell'?'Locked — keep growing or absorb glowing crystals.':'Locked — dig up fossils (purple beams) or befriend/defeat a species that has it.');sfx(150,.1,'square');return;}
-  ED.drag={kind:'new',t:c.dataset.t};makeGhost(c.dataset.t);showIcon(c.dataset.t,e);});
+  ED.drag={kind:'new',t:c.dataset.t,rot:0};makeGhost(c.dataset.t);showIcon(c.dataset.t,e);});
 function showIcon(t,e){const di=$('dragIcon');di.textContent=PARTS[t].ic;di.classList.remove('hidden');di.style.left=e.clientX+'px';di.style.top=e.clientY+'px';}
 function makeGhost(t){clearGhosts();for(let i=0;i<2;i++){const g=buildPart(t,ED.gen);g.traverse(m=>{if(m.isMesh)m.material=ghostMat;});g.visible=false;scEd.add(g);ED.ghosts.push(g);}}
 function clearGhosts(){ED.ghosts.forEach(g=>scEd.remove(g));ED.ghosts=[];}
@@ -864,8 +876,18 @@ function updateGhost(e){const di=$('dragIcon');di.style.left=e.clientX+'px';di.s
   ED.ghosts.forEach(g=>g.visible=false);
   if(document.elementFromPoint(e.clientX,e.clientY)!==R.domElement)return;
   setRay(e.clientX,e.clientY);const hit=ray.intersectObjects(ED.info.bodyMeshes,false)[0];if(!hit)return;
-  const rec=hitToPart(hit,ED.drag.t);if(ED.drag.part)rec.s=ED.drag.part.s;ED.ghostRec=rec;
-  (rec.m?[1,-1]:[1]).forEach((sg,i)=>{const g=ED.ghosts[i],{pos,n}=partPose(ED.gen,rec,sg);g.position.copy(ED.info.body.localToWorld(pos));g.quaternion.setFromUnitVectors(UP,n);g.scale.setScalar(rec.s*ED.info.root.scale.x);g.visible=true;});}
+  const rec=hitToPart(hit,ED.drag.t);if(ED.drag.part)rec.s=ED.drag.part.s;if(ED.drag.rot)rec.rot=ED.drag.rot;ED.ghostRec=rec;
+  (rec.m?[1,-1]:[1]).forEach((sg,i)=>{const g=ED.ghosts[i],{pos,n}=partPose(ED.gen,rec,sg);g.position.copy(ED.info.body.localToWorld(pos));g.quaternion.setFromUnitVectors(UP,n);if(rec.rot)g.rotateY(rec.rot*sg);g.scale.setScalar(rec.s*ED.info.root.scale.x);g.visible=true;});}
+const ROT_STEP=Math.PI/12;
+function partUnderPointer(){setRay(G.ptr.x,G.ptr.y);const h=ray.intersectObjects(ED.info.partMeshes,false)[0];return h?h.object.userData.idx:-1;}
+function rotatePart(dir){const step=dir*ROT_STEP,d=ED.drag;
+  if(d&&(d.kind==='new'||d.kind==='move')){if(isLeg(d.t)){edMsg('Legs always point down — they cannot be rotated.');return;}d.rot=(d.rot||0)+step;sfx(560,.03,'triangle');
+    if(ED.ghostRec){const e={clientX:G.ptr.x,clientY:G.ptr.y};updateGhost(e);}return;}
+  let i=partUnderPointer();if(i<0&&performance.now()-(ED.lastRot||0)<1500&&ED.lastRotIdx<ED.gen.parts.length)i=ED.lastRotIdx;ED.lastRotIdx=i;if(i<0){edMsg('Point at a part (or drag one) and press Q / R, or Shift+scroll on it, to rotate it.');return;}
+  const p=ED.gen.parts[i];if(isLeg(p.t)){edMsg('Legs always point down — they cannot be rotated.');return;}
+  if(performance.now()-(ED.lastRot||0)>700)pushUndo();ED.lastRot=performance.now();
+  p.rot=(((p.rot||0)+step)%TAU+TAU)%TAU;if(Math.abs(p.rot)<1e-6||Math.abs(p.rot-TAU)<1e-6)p.rot=0;
+  sfx(560,.03,'triangle');edMsg(PARTS[p.t].n+' rotated to '+Math.round(p.rot*180/Math.PI)+'°');edRebuild();}
 function insertV(idx,v){ED.gen.spine.splice(idx,0,v);ED.gen.parts.forEach(p=>{if(p.v>=idx)p.v++;});}
 function removeV(idx){ED.gen.spine.splice(idx,1);ED.gen.parts.forEach(p=>{if(p.v>idx)p.v--;else if(p.v===idx)p.v=Math.max(0,idx-1);});}
 function constrainChain(i){const S=ED.gen.spine;const fix=(a,b)=>{const dx=a.x-b.x,dy=a.y-b.y,d=hyp(dx,dy)||1;if(d>1.25){a.x=b.x+dx/d*1.25;a.y=b.y+dy/d*1.25;}else if(d<.4){a.x=b.x+dx/d*.4;a.y=b.y+dy/d*.4;}a.y=clamp(a.y,a.r*.6,7);};
@@ -883,7 +905,7 @@ R.domElement.addEventListener('pointerdown',e=>{G.ptr.down=true;G.ptr.x=e.client
   const orbit={kind:'orbit'};if(e.button===2){ED.drag=orbit;return;}
   const hit=ray.intersectObjects([...ED.info.partMeshes,...ED.info.bodyMeshes,...ED.handles],false)[0];
   if(!hit){ED.drag=orbit;return;}const u=hit.object.userData;
-  if(u.kind==='part'){pushUndo();const p=ED.gen.parts.splice(u.idx,1)[0];ED.drag={kind:'move',t:p.t,part:p};edRebuild();makeGhost(p.t);showIcon(p.t,e);updateGhost(e);sfx(500,.05,'triangle');}
+  if(u.kind==='part'){pushUndo();const p=ED.gen.parts.splice(u.idx,1)[0];ED.drag={kind:'move',t:p.t,part:p,rot:p.rot||0};edRebuild();makeGhost(p.t);showIcon(p.t,e);updateGhost(e);sfx(500,.05,'triangle');}
   else if(u.kind==='handle'){pushUndo();ED.drag={kind:'grow',end:u.end};}
   else if(ED.mode==='creature'){pushUndo();ED.drag={kind:'vert',i:nearestV(bodyLocal(hit.point))};}
   else ED.drag=orbit;});
@@ -914,6 +936,7 @@ R.domElement.addEventListener('wheel',e=>{e.preventDefault();const up=e.deltaY<0
   if(G.stage!=='editor')return;setRay(e.clientX,e.clientY);
   const hit=ray.intersectObjects([...ED.info.partMeshes,...ED.info.bodyMeshes],false)[0];
   const wu=()=>{if(performance.now()-(ED.lastWheel||0)>700)pushUndo();ED.lastWheel=performance.now();};
+  if(e.shiftKey&&((ED.drag&&(ED.drag.kind==='new'||ED.drag.kind==='move'))||(hit&&hit.object.userData.kind==='part'))){rotatePart(up?1:-1);return;}
   if(hit&&hit.object.userData.kind==='part'){wu();const p=ED.gen.parts[hit.object.userData.idx];p.s=clamp((p.s||1)*(up?1.1:1/1.1),.5,2.5);edRebuild();}
   else if(hit&&ED.mode==='creature'){wu();const v=ED.gen.spine[nearestV(bodyLocal(hit.point))];v.r=clamp(v.r*(up?1.08:1/1.08),.2,1.5);v.y=Math.max(v.y,v.r*.6);edRebuild();}
   else ED.cam.dist=clamp(ED.cam.dist*(up?1/1.1:1.1),3,25);},{passive:false});
@@ -928,7 +951,7 @@ function edDone(){const c=genCount(ED.gen);
   Object.keys(PARTS).forEach(k=>{if((PARTS[k].cat==='Cell')===(ED.mode==='cell'))G.newParts.delete(k);});
   if(ED.mode==='cell'){const p=G.player;scCell.remove(p.info.root);disposeInfo(p.info);p.info=buildCreature(p.gen,true);scCell.add(p.info.root);p.hp=Math.min(p.hp+1,cellStats(p).maxhp);buildHotbar();}
   else if(G.stage==='creature'){const p=G.player;scLand.remove(p.info.root);disposeInfo(p.info);p.info=buildCreature(p.gen,false);scLand.add(p.info.root);setPlayerCre(p);p.hp=p.maxhp;buildHotbar();}
-  const f=ED.onDone;ED.onDone=null;if(f)f();}
+  const f=ED.onDone;ED.onDone=null;if(f)f();saveGame();}
 function updEditor(dt){const c=ED.cam,i=ED.info;c.tx+=((ED.mode==='cell'?0:i.cx)-c.tx)*.1;c.ty+=((ED.mode==='cell'?0:i.cy*.6+.3)-c.ty)*.1;
   camera.position.set(c.tx+Math.cos(c.pitch)*Math.sin(c.yaw)*c.dist,c.ty+Math.sin(c.pitch)*c.dist,Math.cos(c.pitch)*Math.cos(c.yaw)*c.dist);camera.lookAt(c.tx,c.ty,0);
   if(ED.walking)ED.phase+=dt*6;animateCreature(i,G.t,ED.phase,ED.walking?1:0,ED.mode==='cell'?0:Math.max(0,Math.sin(G.t*1.5))*.6);
@@ -946,7 +969,7 @@ function tryEditor(){if(G.stage==='cell')openEditor('cell',G.player.gen);
   else if(G.stage==='creature'){if(hyp(G.player.x,G.player.z)<16)openEditor('creature',G.gen);else toast('Return to your nest to evolve (white square on the map).','#f3d27a');}}
 addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(document.activeElement&&document.activeElement.tagName==='INPUT')return;K[k]=true;
   if(k===' '||k.startsWith('arrow'))e.preventDefault();
-  if(G.stage==='editor'){if((e.ctrlKey||e.metaKey)&&k==='z'){e.preventDefault();doUndo();}if(k==='escape')edDone();return;}
+  if(G.stage==='editor'){if((e.ctrlKey||e.metaKey)&&k==='z'){e.preventDefault();doUndo();}else if(k==='q')rotatePart(-1);else if(k==='r')rotatePart(1);if(k==='escape')edDone();return;}
   if(e.repeat)return;
   if(k==='e')tryEditor();if(k==='l')toLand();if(k==='m'){muted=!muted;toast(muted?'Muted':'Sound on');}
   if(G.stage==='cell'&&k===' ')useAbility('jet');
@@ -955,7 +978,9 @@ addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(document.activeEle
 addEventListener('keyup',e=>{K[e.key.toLowerCase()]=false;});
 addEventListener('blur',()=>{for(const k in K)K[k]=false;G.ptr.down=false;});
 $('bEd').onclick=tryEditor;$('bLand').onclick=toLand;
-$('bStart').onclick=()=>{$('menu').classList.add('hidden');if(G.menuInfo){scEd.remove(G.menuInfo.root);disposeInfo(G.menuInfo);G.menuInfo=null;}startCell();sfx(440,.2,'triangle');};
+function leaveMenu(){$('menu').classList.add('hidden');if(G.menuInfo){scEd.remove(G.menuInfo.root);disposeInfo(G.menuInfo);G.menuInfo=null;}sfx(440,.2,'triangle');}
+$('bStart').onclick=()=>{if(readSave()&&!confirm('Start a new life? Your saved progress in this browser will be replaced.'))return;clearSave();leaveMenu();startCell();saveGame();};
+$('bCont').onclick=()=>{const sv=readSave();if(!sv){menuSaveInfo();return;}leaveMenu();try{loadGame(sv);}catch(err){console.error(err);toast('Save could not be loaded, so a new life begins.','#ff9a8a');G.unlocked=new Set(['c_filter','c_eye']);G.newParts=new Set();startCell();}};
 $('bRoam').onclick=()=>$('win').classList.add('hidden');
 function updButtons(){const s=G.stage;$('btns').classList.toggle('hidden',s==='menu'||s==='editor');
   $('bLand').classList.toggle('hidden',!(s==='cell'&&G.landReady));
@@ -1005,6 +1030,30 @@ function drawHUD(){hx.setTransform(DPR,0,0,DPR,0,0);hx.clearRect(0,0,W,H);const 
   let ty=H*.22;for(const t of G.toasts){hx.globalAlpha=Math.min(1,t.t);hx.font='bold 18px system-ui';hx.textAlign='center';hx.lineWidth=4;hx.strokeStyle='rgba(0,0,0,.7)';hx.strokeText(t.text,W/2,ty);hx.fillStyle=t.col;hx.fillText(t.text,W/2,ty);ty+=28;}
   hx.globalAlpha=1;}
 
+
+// ================= saving (browser localStorage) =================
+const SAVE_KEY='primordia-save-v1';
+function snapshot(){let st=G.stage;if(st==='editor'){if(ED.onDone)return null;st=ED.prev;}
+  if(st!=='cell'&&st!=='creature')return null;
+  const o={v:1,stage:st,seed:G.seed,dna:G.dna,unlocked:[...G.unlocked],newParts:[...G.newParts],relicTaken:[...G.relicTaken],relicFound:G.relicFound,time:Date.now()};
+  if(st==='cell'){const p=G.player;o.landReady=G.landReady;o.player={x:p.x,y:p.y,r:p.r,hp:p.hp,grow:p.grow,gen:p.gen};}
+  else{const p=G.player;o.gen=G.gen;o.player={x:p.x,z:p.z,hp:Math.max(1,p.hp)};o.hunger=G.hunger;o.won=G.won;o.regions=[...G.regions];
+    o.species=G.species.map(s=>({name:s.name,kind:s.kind,gen:s.gen,home:s.home,nest:s.nest,disposition:s.disposition,relation:s.relation,status:s.status,mult:s.mult,want:s.want,
+      alive:s.members.filter(m=>!m.dead&&!m.pack).length,pack:s.members.filter(m=>!m.dead&&m.pack).length}));}
+  return o;}
+let saveOK=true;
+function saveGame(){if(!saveOK)return;const o=snapshot();if(!o)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(o));}catch(e){}}
+function readSave(){try{const t=localStorage.getItem(SAVE_KEY);if(!t)return null;const o=JSON.parse(t);return o&&o.v===1&&(o.stage==='cell'||o.stage==='creature')?o:null;}catch(e){return null;}}
+function clearSave(){try{localStorage.removeItem(SAVE_KEY);}catch(e){}}
+function loadGame(sv){G.unlocked=new Set(sv.unlocked);G.newParts=new Set(sv.newParts||[]);
+  if(sv.stage==='cell')startCell(sv);else startCreature(sv);}
+setInterval(saveGame,5000);
+addEventListener('pagehide',saveGame);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)saveGame();});
+function menuSaveInfo(){const sv=readSave(),b=$('bCont');if(!sv){b.classList.add('hidden');return;}
+  const ago=Math.max(0,Date.now()-(sv.time||0)),mins=Math.round(ago/60000),when=mins<1?'just now':mins<60?mins+' min ago':mins<1440?Math.round(mins/60)+' h ago':Math.round(mins/1440)+' d ago';
+  b.innerHTML=`▶ Continue <small>${sv.stage==='cell'?'Cell stage':'Creature stage'} · 🧬 ${sv.dna} DNA · saved ${when}</small>`;b.classList.remove('hidden');b.disabled=false;}
+
 // ================= menu & loop =================
 function menuCreature(){if(G.menuInfo){scEd.remove(G.menuInfo.root);disposeInfo(G.menuInfo);}G.menuInfo=buildCreature(randGen(pick(['herb','carn','omni'])),false);scEd.add(G.menuInfo.root);G.menuSwap=7;}
 let last=performance.now();
@@ -1015,7 +1064,7 @@ function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;G.t+=dt;let s
   else if(G.stage==='creature'){updateCreature(dt);scene=scLand;}
   updParticles(dt);updHotbar(dt);R.render(scene,camera);drawHUD();updButtons();requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
-loadModels(()=>{menuCreature();const b=$('bStart');b.disabled=false;b.textContent='Begin Life';});
+loadModels(()=>{menuCreature();const b=$('bStart');b.disabled=false;b.textContent=readSave()?'New Life':'Begin Life';menuSaveInfo();});
 </script>
 </body>
 </html>
